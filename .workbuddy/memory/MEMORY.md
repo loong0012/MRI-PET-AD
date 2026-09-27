@@ -6,8 +6,9 @@ ADScreen · 阿尔兹海默病多模态影像智能筛查与干预平台。
 算法层为 PyTorch 实现的 TransMF（结构 MRI + PET 融合），训练脚本在仓库根目录。
 
 ## 关键约定与事实
-- **项目不是 git 仓库**（截至 2026-09-27）。历史方案文档存在"写了没落地"的情况，
-  任何优化文档必须标注「计划/已实施」并附验证命令。
+- **已是 Git 仓库**（2026-09-27 初始化，分支 main，首次提交 9e11d2c，331 个文件 / 8.4MB）。
+  git 身份：loong0012 <1478211871@qq.com>。**尚未配置远端 remote**。
+  历史方案文档存在"写了没落地"的情况，任何优化文档必须标注「计划/已实施」并附验证命令。
 - 后端规模：31 路由 / 15 服务 / 16 ORM 模型，约 16.6k 行；前端 22 视图 / 120 个 .vue|.ts。
 - 数据库为 SQLite，连接级 PRAGMA 在 `database.py` 的 `_sqlite_pragmas` 中下发（WAL + busy_timeout + 外键）。
 - tensorflow 级别的深度学习依赖**不在** `requirements.txt`（拆到 `requirements-ml.txt`），
@@ -30,6 +31,13 @@ ADScreen · 阿尔兹海默病多模态影像智能筛查与干预平台。
   不要给 pytest 传 `--basetemp`（pytest 自身会先 rmtree 该目录，同样被拦）。
 - npm 源 `registry.npm.taobao.org` **证书已过期**，安装必须加
   `--registry=https://registry.npmmirror.com`。
+
+## Git 仓库约定
+- 忽略策略：源码/文档入库；`datasets/*/`（33G 影像）、checkpoints、best_model_* 权重、
+  `*.db`、`.env`、`node_modules/`、`dist/`、`.mimosa/`（AI 会话快照）、`.v2c/` 一律排除。
+  `datasets/` 根目录下的 .py（如 ADNI.py）是数据加载代码，**要入库**。
+- `.gitattributes` 统一 LF + 二进制标记；Windows 脚本（.bat/.cmd/.ps1）保持 CRLF。
+- 提交前自检：`git ls-files | wc -l`（正常 ~331）、`git status` 应干净。
 
 ## 已完成的关键能力（四轮优化后）
 - 工程可靠性（2026-09-27 第二轮）：依赖清单、SQLite WAL/busy_timeout、CSP、全局限流、
