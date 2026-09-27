@@ -7,7 +7,9 @@ ADScreen · 阿尔兹海默病多模态影像智能筛查与干预平台。
 
 ## 关键约定与事实
 - **已是 Git 仓库**（2026-09-27 初始化，分支 main，首次提交 9e11d2c，331 个文件 / 8.4MB）。
-  git 身份：loong0012 <1478211871@qq.com>。**尚未配置远端 remote**。
+  远端 **https://github.com/loong0012/MRI-PET-AD**（**PUBLIC 公开仓库**），已推送并跟踪 origin/main。
+  git 身份：loong0012 <1478211871@qq.com>。
+  ⚠ 公开仓库：提交前必须扫密钥与内网地址，历史一旦推送无法撤回。
   历史方案文档存在"写了没落地"的情况，任何优化文档必须标注「计划/已实施」并附验证命令。
 - 后端规模：31 路由 / 15 服务 / 16 ORM 模型，约 16.6k 行；前端 22 视图 / 120 个 .vue|.ts。
 - 数据库为 SQLite，连接级 PRAGMA 在 `database.py` 的 `_sqlite_pragmas` 中下发（WAL + busy_timeout + 外键）。
@@ -31,6 +33,9 @@ ADScreen · 阿尔兹海默病多模态影像智能筛查与干预平台。
   不要给 pytest 传 `--basetemp`（pytest 自身会先 rmtree 该目录，同样被拦）。
 - npm 源 `registry.npm.taobao.org` **证书已过期**，安装必须加
   `--registry=https://registry.npmmirror.com`。
+- `git push` 认证走 `credential.helper=helper-selector`（GCM 浏览器 OAuth）。
+  无头环境会一直卡住（`GIT_TERMINAL_PROMPT=0` 也拦不住 GCM 的 GUI），
+  必须后台跑，给用户在浏览器完成授权的时间；本次耗时 41s 完成。
 
 ## Git 仓库约定
 - 忽略策略：源码/文档入库；`datasets/*/`（33G 影像）、checkpoints、best_model_* 权重、
