@@ -1,0 +1,83 @@
+name: CI
+
+# 触发：主分支推送与所有 PR
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+# 同一分支的新提交自动取消旧构建，节约 runner 时长
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: 后端 · lint + 测试
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ad-screen-backend
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 配置 Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: ad-screen-backend/requirements.txt
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          # 仅装核心依赖：torch/monai 走懒加载，模拟推理路径不需要
+          pip install -r requirements.txt
+          pip install pytest httpx ruff
+
+      - name: Ruff 静态检查
+        # 只报语法错误与未定义名，避免因项目风格差异刷屏
+        run: ruff check --select=E9,F63,F7,F82,F401,E711,E712 --output-format=github .
+
+      - name: Pytest
+        env:
+          ADSCREEN_ENV: development
+          ADSCREEN_SECRET_KEY: ci-only-not-a-real-secret-key-please-ignore
+        run: python -m pytest tests/ -q --tb=short
+
+  frontend:
+    name: 前端 · 测试 + 类型检查 + 构建
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ad-screen-frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 配置 Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ad-screen-frontend/package-lock.json
+
+      - name: 安装依赖
+        # 无 lock 文件时回退 npm install，保证 CI 不因缺 lock 直接失败
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
+
+      - name: 单元测试
+        run: npm run test
+
+      - name: TypeScript 类型检查
+        run: npm run typecheck
+
+      - name: 生产构建
+        run: npm run build

@@ -1,0 +1,28 @@
+# 统一行尾符：仓库内一律 LF，检出时由 Git 按平台转换。
+# 项目跨 Windows/Linux（CI 跑 ubuntu-latest），不设此项会出现
+# "整个文件被改动" 的假 diff，让 code review 无法进行。
+* text=auto eol=lf
+
+# Windows 脚本必须保持 CRLF，否则无法执行
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 二进制：禁止 Git 尝试做文本转换或 diff
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.pt binary
+*.pth binary
+*.nii binary
+*.nii.gz binary
+*.db binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+
+# 锁文件不参与 diff（体积大且无可读性）
+package-lock.json -diff linguist-generated=true

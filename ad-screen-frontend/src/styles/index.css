@@ -1,0 +1,276 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================
+   ADScreen 全局设计变量 —— 低饱和度蓝灰医疗色系
+   ========================================================== */
+:root {
+  --ad-primary: #2f6da3;
+  --ad-primary-dark: #24567f;
+  --ad-primary-light: #e8f1f8;
+  --ad-sidebar: #1c2b3a;
+  --ad-sidebar-hover: #253a4e;
+  --ad-surface: #ffffff;
+  --ad-bg: #f4f6f9;
+  --ad-border: #e3e9ef;
+  --ad-ink: #24303c;
+  --ad-ink-2: #5c6b7a;
+  --ad-ink-3: #93a1af;
+  --ad-shadow-card: 0 1px 2px rgba(16,32,48,.04), 0 4px 16px rgba(16,32,48,.06);
+  --ad-risk-low: #2e9e6b;
+  --ad-risk-mci: #d99a2b;
+  --ad-risk-early: #d96b2b;
+  --ad-risk-late: #c94f4f;
+  /* 通知徽标背景（浅色底） */
+  --ad-notify-danger-bg: #fae5e5;
+  --ad-notify-info-bg: #e8f1f8;
+  --ad-notify-warn-bg: #fbf4e6;
+  --ad-notify-neutral-bg: #f2f6fa;
+}
+
+/* 深色模式（医疗阅片护眼：降低对比度，偏深蓝灰） */
+html.dark {
+  --ad-primary: #4a8fd1;
+  --ad-primary-dark: #3a78b5;
+  --ad-primary-light: #1f3346;
+  --ad-sidebar: #121b24;
+  --ad-sidebar-hover: #1c2a37;
+  --ad-surface: #1e2937;
+  --ad-bg: #141d27;
+  --ad-border: #2c3a4a;
+  --ad-ink: #e4ecf3;
+  --ad-ink-2: #a8b6c4;
+  --ad-ink-3: #738496;
+  --ad-shadow-card: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.35);
+  --ad-risk-low: #4fc08d;
+  --ad-risk-mci: #e6b54d;
+  --ad-risk-early: #e08a4a;
+  --ad-risk-late: #e06666;
+  /* 通知徽标背景（深色底） */
+  --ad-notify-danger-bg: #3a2323;
+  --ad-notify-info-bg: #1f3346;
+  --ad-notify-warn-bg: #3a3320;
+  --ad-notify-neutral-bg: #25303d;
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  /* 纯系统字体栈：医院内网无法访问 Google Fonts，外链字体会拖慢首屏并产生失败请求 */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+  color: var(--ad-ink);
+  background: var(--ad-bg);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 数字 / 指标专用等宽字体，呈现医疗设备读数质感（优先 Windows 阅片机自带的 Consolas） */
+.font-num {
+  font-family: 'Cascadia Mono', Consolas, 'SF Mono', Menlo, 'Courier New', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 通用布局工具 ---------- */
+@layer components {
+  /* 白色圆角卡片容器 */
+  .card-ad {
+    @apply bg-white rounded-card shadow-card border border-line;
+  }
+  /* 卡片标题行 */
+  .card-ad__header {
+    @apply flex items-center justify-between px-5 h-12 border-b border-line;
+  }
+  .card-ad__title {
+    @apply text-[15px] font-semibold text-ink flex items-center gap-2;
+  }
+  .card-ad__title::before {
+    content: '';
+    @apply inline-block w-1 h-4 rounded-full bg-primary;
+  }
+  /* 二级说明文字 */
+  .text-sub {
+    color: var(--ad-ink-2);
+  }
+  .text-hint {
+    color: var(--ad-ink-3);
+  }
+  /* 页面主体容器 */
+  .page-wrap {
+    @apply p-5 space-y-4;
+  }
+}
+
+/* ---------- 细滚动条（工作区风格） ---------- */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #c3cdd8;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a8b4c0;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---------- 阅片视口黑底 ---------- */
+.viewport-dark {
+  background: #0b0f14;
+}
+
+/* ==========================================================
+   动效层 —— 克制、专业的医疗工作站质感
+   入场：fade-up 轻微上浮；卡片悬浮：柔和抬升；页面切换：淡入
+   遵循 prefers-reduced-motion，关闭非必要动画
+   ========================================================== */
+
+/* 入场上浮（配合 --anim-delay 实现错落） */
+@keyframes ad-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes ad-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ad-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@layer components {
+  /* 错落入场：在元素上设置 style="--anim-delay: 60ms" */
+  .anim-fade-up {
+    opacity: 0;
+    animation: ad-fade-up 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+    animation-delay: var(--anim-delay, 0ms);
+  }
+  .anim-fade-in {
+    opacity: 0;
+    animation: ad-fade-in 0.5s ease forwards;
+    animation-delay: var(--anim-delay, 0ms);
+  }
+  .anim-scale-in {
+    opacity: 0;
+    animation: ad-scale-in 0.4s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+    animation-delay: var(--anim-delay, 0ms);
+  }
+
+  /* 可交互卡片：悬停柔和抬升 + 主色边描 */
+  .card-interactive {
+    transition:
+      transform 0.22s cubic-bezier(0.22, 0.61, 0.36, 1),
+      box-shadow 0.22s ease,
+      border-color 0.22s ease;
+  }
+  .card-interactive:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(16, 32, 48, 0.08), 0 14px 36px rgba(16, 32, 48, 0.1);
+    border-color: rgba(47, 109, 163, 0.35);
+  }
+
+  /* 品牌渐变文字 / 背景 */
+  .brand-gradient-text {
+    background: linear-gradient(120deg, #2f6da3, #3f86c4);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .brand-gradient-bg {
+    background: linear-gradient(135deg, #24567f 0%, #2f6da3 55%, #3f86c4 100%);
+  }
+}
+
+/* 路由切换过渡 */
+.page-fade-enter-active {
+  transition:
+    opacity 0.28s ease,
+    transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.page-fade-leave-active {
+  transition:
+    opacity 0.14s ease,
+    transform 0.14s ease;
+}
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+/* 弹窗过渡更柔和 */
+.dialog-fade-enter-active {
+  transition:
+    opacity 0.26s ease,
+    transform 0.26s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.dialog-fade-leave-active {
+  transition: opacity 0.16s ease;
+}
+.dialog-fade-enter-from,
+.dialog-fade-leave-to {
+  opacity: 0;
+}
+.dialog-fade-enter-from {
+  transform: translateY(18px) scale(0.98);
+}
+
+/* 用户偏好减少动效时，关闭动画 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------- 打印样式：仅输出报告区域 ---------- */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  @page {
+    size: A4;
+    margin: 0;
+  }
+}

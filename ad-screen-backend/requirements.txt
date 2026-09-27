@@ -1,0 +1,41 @@
+# ============================================================
+# ADScreen 后端核心依赖
+# 目标：pip install -r requirements.txt 后服务可完整启动
+# （含阅片 MPR/PNG 编码、DICOM/NIfTI 解析、随访日期推算、密码哈希）
+#
+# 深度学习（torch / monai）不在此文件：
+# - CPU 演示模式下走模拟推理，无需安装；
+# - 需要真实 GPU 推理时另装：pip install -r requirements-ml.txt
+#
+# 版本策略：下限锁定 + 上限排他（>=x,<y），兼顾可复现与多 Python 版本兼容
+# ============================================================
+
+# ---------- Web 框架与运行时 ----------
+fastapi>=0.115.6,<0.116
+uvicorn[standard]>=0.34.0,<0.35
+python-multipart>=0.0.18,<0.1
+
+# ---------- 数据层与校验 ----------
+sqlalchemy>=2.0.36,<2.1
+pydantic>=2.10.4,<3
+
+# ---------- 鉴权 ----------
+# JWT 签发/校验
+python-jose[cryptography]>=3.3.0,<4
+# 密码哈希：services/auth.py 直接调用 bcrypt（不使用已弃用的 passlib）
+bcrypt>=4.0.1,<5
+
+# ---------- 影像与数值计算 ----------
+# 阅片切片重采样、Grad-CAM 热力图、PNG 缓存编码
+numpy>=1.26,<3
+pillow>=10.3,<12
+# DICOM 元数据解析（质控 / 影像路由）
+pydicom>=2.4.4,<4
+# NIfTI 读写（MRI/PET 体数据）
+nibabel>=5.2,<6
+# 插值与统计（纵向分析 MCID 检验）
+scipy>=1.11,<2
+
+# ---------- 日期计算 ----------
+# 随访计划与纵向对比使用 relativedelta 推算月/年间隔
+python-dateutil>=2.8.2,<3

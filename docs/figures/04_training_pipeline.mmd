@@ -1,0 +1,28 @@
+%% TransMF 对抗训练流程（kfold_train_adversarial.py）
+flowchart LR
+    classDef prep fill:#DCE9F7,stroke:#1D4E89,stroke-width:1.5px,color:#0F172A
+    classDef train fill:#EAE3F5,stroke:#5B3E8E,stroke-width:1.5px,color:#0F172A
+    classDef ctrl fill:#FBDCD6,stroke:#A93226,stroke-width:1.5px,color:#0F172A
+    classDef out fill:#D6EFE6,stroke:#0F6B57,stroke-width:1.5px,color:#0F172A
+
+    D["ADNI.csv 标签表<br/>MRI / PET NIfTI 按 subject 配对"]:::prep
+    K["队列分层 5 折 KFold<br/>StratifiedKFold(num_fold=5)<br/>可选 cohort_split 按队列+标签分层"]:::prep
+    S["WeightedRandomSampler<br/>逆频率过采样少数类"]:::prep
+    A["训练增强<br/>RandFlip / RandRotate / RandZoom<br/>可选 Mixup α=0.4 / Gamma 0.8–1.2"]:::prep
+
+    F["model_ad(mri, pet) 前向<br/>sNet ×2 → CrossTransformer ×3<br/>输出 logits, D_MRI_logits, D_PET_logits"]:::train
+    L["双损失<br/>L_cls = LSCE(logits, y)，label_smooth 0.05<br/>L_adv = 0.1 × [CE(D_MRI,1)+CE(D_PET,0)]/2<br/>total = L_cls + L_adv"]:::train
+    O["AdamW（lr 5e-4, weight_decay 1e-4）<br/>Cosine / WarmCos / MultiStep 退火<br/>梯度裁剪 5.0"]:::train
+    E["EMA（decay 0.9998）<br/>验证 / 测试用影子权重"]:::ctrl
+    ES["验证集 AUC 早停<br/>EarlyStopping(patience=15)<br/>fixed 模式禁用早停"]:::ctrl
+    SN["快照保存 epoch 40 / 45 / 50<br/>保存 EMA 权重 snapshot_epoch{N}.pt"]:::ctrl
+
+    T["每折测试集评估<br/>ACC / AUC / SEN / SPE / F1"]:::out
+    Y["Youden J 阈值校准<br/>per-fold 或全局"]:::out
+    CSV["results_summary.csv<br/>5 折 mean ± std"]:::out
+    ENS["75 个快照权重<br/>→ ModelEnsemble 集成推理"]:::out
+
+    D --> K --> S --> A --> F --> L --> O --> E --> ES --> SN
+    ES --> T --> Y --> CSV
+    SN --> T
+    SN --> ENS

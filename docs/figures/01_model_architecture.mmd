@@ -1,0 +1,57 @@
+%% TransMF 模型网络结构（models/mymodel.py -> model_ad）
+flowchart LR
+    classDef mri fill:#DCE9F7,stroke:#1D4E89,stroke-width:1.5px,color:#0F172A
+    classDef pet fill:#FDE7D3,stroke:#B35C00,stroke-width:1.5px,color:#0F172A
+    classDef fuse fill:#EAE3F5,stroke:#5B3E8E,stroke-width:1.5px,color:#0F172A
+    classDef head fill:#D6EFE6,stroke:#0F6B57,stroke-width:1.5px,color:#0F172A
+    classDef adv fill:#FBDCD6,stroke:#A93226,stroke-width:1.5px,color:#0F172A
+    classDef io fill:#ECEFF4,stroke:#4A5568,stroke-width:1.5px,color:#0F172A
+    classDef loss fill:#FFF7DC,stroke:#9A7B0A,stroke-width:1.5px,color:#0F172A
+
+    subgraph IN["输入"]
+        direction TB
+        MRI["MRI T1 结构像<br/>1 × X × Y × Z"]:::io
+        PET["PET FDG 代谢像<br/>1 × X × Y × Z"]:::io
+    end
+
+    subgraph ENC["模态编码器 sNet（3D-CNN）"]
+        direction TB
+        ENC_M["sNet(MRI)<br/>Conv3d 1→32→64→128→128<br/>InstanceNorm3d + LeakyReLU<br/>MaxPool×3 + AvgPool×1"]:::mri
+        ENC_P["sNet(PET)<br/>Conv3d 1→32→64→128→128<br/>InstanceNorm3d + LeakyReLU<br/>MaxPool×3 + AvgPool×1"]:::pet
+    end
+
+    subgraph TOK["Token 化（rearrange）"]
+        direction TB
+        T_M["b·d·x·y·z → b·(xyz)·d<br/>150 × 128"]:::mri
+        T_P["b·d·x·y·z → b·(xyz)·d<br/>150 × 128"]:::pet
+    end
+
+    subgraph FUSE["CrossTransformer_MOD_AVG（depth = 3）"]
+        direction TB
+        L1["Layer 1<br/>mri ← CrossAttn(Q=mri, KV=pet) + mri<br/>pet ← CrossAttn(Q=pet, KV=mri) + pet"]:::fuse
+        L2["Layer 2（同上，权重独立）"]:::fuse
+        L3["Layer 3（同上，权重独立）"]:::fuse
+        POOL["GAP + GMP 池化<br/>mri / pet 各做平均池化 + 最大池化<br/>concat → 4·dim = 512-d cls token"]:::fuse
+    end
+
+    HEAD["分类头 fc_cls<br/>Linear 512→512 + LayerNorm + ReLU + Dropout 0.5<br/>Linear 512→64 + LayerNorm + ReLU + Dropout 0.5<br/>Linear 64→2"]:::head
+    OUT["Softmax → p(AD)<br/>阈值判定 → CN / AD"]:::head
+
+    MRI --> ENC_M --> T_M --> L1
+    PET --> ENC_P --> T_P --> L1
+    L1 --> L2 --> L3 --> POOL --> HEAD --> OUT
+
+    subgraph ADV["对抗域对齐分支（梯度反转）"]
+        direction LR
+        GAP["GAP<br/>AdaptiveAvgPool3d(1)<br/>特征图 → 128-d"]:::adv
+        REV["revgrad(x, α=2)<br/>前向恒等 / 反向 ×(−α)"]:::adv
+        DISC["域判别器 D<br/>Linear 128→128 + LayerNorm + ReLU<br/>Linear 128→2"]:::adv
+        DOM["域标签<br/>MRI 域 y = 1<br/>PET 域 y = 0"]:::adv
+    end
+    ENC_M -.->|特征图| GAP
+    ENC_P -.->|特征图| GAP
+    GAP --> REV --> DISC --> DOM
+
+    LOSS["总损失 total = L_cls + L_adv<br/>L_cls = LSCE(logits, y)，权重 1.0<br/>L_adv = 0.1 × [CE(D_MRI,1) + CE(D_PET,0)] / 2"]:::loss
+    OUT --> LOSS
+    DOM --> LOSS

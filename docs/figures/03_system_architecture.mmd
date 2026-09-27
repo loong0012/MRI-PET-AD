@@ -1,0 +1,63 @@
+%% ADScreen 平台整体系统架构
+flowchart TB
+    classDef fe fill:#E8F1FB,stroke:#1D4E89,stroke-width:1.5px,color:#0F172A
+    classDef be fill:#D6EFE6,stroke:#0F6B57,stroke-width:1.5px,color:#0F172A
+    classDef db fill:#FEF9E7,stroke:#9A7B0A,stroke-width:1.5px,color:#0F172A
+    classDef ai fill:#FBDCD6,stroke:#A93226,stroke-width:1.5px,color:#0F172A
+    classDef ops fill:#F1F5F9,stroke:#64748B,stroke-width:1.5px,color:#0F172A
+    classDef role fill:#FFFFFF,stroke:#475569,stroke-width:1.5px,color:#0F172A
+
+    subgraph R["用户与角色"]
+        direction LR
+        R1["放射科医师"]:::role
+        R2["神经内科医师"]:::role
+        R3["科研管理员"]:::role
+        R4["超级管理员"]:::role
+    end
+
+    subgraph FE["前端表现层（Vue 3 + TS + Vite）"]
+        direction TB
+        FE0["Element Plus + Tailwind CSS<br/>ECharts + Three.js<br/>Pinia + Vue Router + Axios"]:::fe
+        FE1["多模态阅片 / AI 辅助诊断 / 病例管理<br/>报告系统 / 数据分析 / 患者管理<br/>影像质控 / 患者教育 / 系统管理 / 个人中心 / 登录注册"]:::fe
+    end
+
+    COMM["通信层：Axios 封装 + Vite Proxy /api → :8000<br/>JWT Bearer Token + SSE 流式推理进度"]:::fe
+
+    subgraph BE["后端服务层（FastAPI）"]
+        direction TB
+        BE1["路由层 routers/（30+ 模块）"]:::be
+        BE2["鉴权与中间件：JWT + token 版本号 / CORS 白名单 / 登录防爆破"]:::be
+        BE3["业务服务层 services/：推理、报告、影像质控、审计"]:::be
+        BE4["数据模型层：SQLAlchemy ORM models/ + Pydantic schemas/"]:::be
+    end
+
+    subgraph AI["AI 推理层"]
+        direction LR
+        AI1["ModelEnsemble 单例<br/>延迟加载 + RLock + 热重载"]:::ai
+        AI2["TransMF model_ad<br/>sNet + CrossTransformer + 对抗分支"]:::ai
+        AI3["MONAI 预处理<br/>强度归一化 + z-score"]:::ai
+        AI4["后处理<br/>概率平均 + 温度校准 + Grad-CAM"]:::ai
+    end
+
+    subgraph DS["数据与存储层"]
+        direction LR
+        DS1["SQLite ad_screen.db"]:::db
+        DS2["datasets/ MRI + PET + ADNI.csv"]:::db
+        DS3["checkpoints/ 75 个快照权重"]:::db
+        DS4["logs/ 运行日志"]:::db
+        DS5["backups/ 数据库备份"]:::db
+    end
+
+    subgraph OPS["运维与监控"]
+        direction LR
+        OPS1["Prometheus /api/metrics"]:::ops
+        OPS2["运行审计看板"]:::ops
+        OPS3["健康检查 / 启动自检"]:::ops
+        OPS4["Docker + docker-compose"]:::ops
+    end
+
+    R --> FE --> COMM --> BE
+    BE -->|调用推理服务| AI
+    BE -->|读写病例 / 报告| DS
+    DS -->|加载快照权重| AI
+    BE -->|暴露指标| OPS

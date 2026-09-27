@@ -1,0 +1,22 @@
+# Prometheus 抓取配置
+# 用途：定时抓取 ADScreen 的 /api/metrics 端点
+# 访问：http://localhost:9090（Grafana 可对接此数据源可视化）
+
+global:
+  scrape_interval: 15s          # 15 秒抓取一次（医疗系统性能敏感，不宜过频）
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'adscreen'
+
+scrape_configs:
+  - job_name: 'adscreen'
+    metrics_path: '/api/metrics'
+    static_configs:
+      - targets: ['adscreen:80']
+        labels:
+          service: 'ad-screen-api'
+          env: 'production'
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

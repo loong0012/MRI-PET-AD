@@ -1,0 +1,77 @@
+# ADScreen · Docker Compose 编排
+# 用途：医院内网一键部署
+# 启动：docker compose up -d
+# 查看日志：docker compose logs -f
+# 停止：docker compose down
+#
+# 包含：
+# - adscreen：FastAPI 后端 + Nginx 静态前端（合并部署，端口 80）
+# - （可选）prometheus：指标采集（端口 9090，仅生产观察环境启用）
+#
+# 注意：
+# - PyTorch 体积大，本编排默认使用 CPU 模拟推理；需 GPU 加速请取消注释 deploy.resources
+# - 模型 checkpoints 体积可达数 GB，通过 volume 挂载，不打入镜像
+# - SQLite 数据库通过 volume 持久化，避免容器重建丢数据
+
+services:
+  adscreen:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: adscreen
+    restart: unless-stopped
+    ports:
+      # 容器 8080（非 root 运行，无法绑定 80）；宿主端口可用 ADSCREEN_PORT 覆盖
+      - "${ADSCREEN_PORT:-8080}:8080"
+    environment:
+      - ADSCREEN_ENV=production
+      # 必填：未提供则 compose 直接报错（避免沿用公开占位密钥签发 JWT）
+      # 生成方式：python -c "import secrets;print(secrets.token_urlsafe(48))"
+      - ADSCREEN_SECRET_KEY=${ADSCREEN_SECRET_KEY:?必须设置 ADSCREEN_SECRET_KEY，可用 python -c "import secrets;print(secrets.token_urlsafe(48))" 生成}
+      - ADSCREEN_CORS_ORIGINS=${ADSCREEN_CORS_ORIGINS:-http://localhost:8080}
+      - ADSCREEN_LOG_LEVEL=${ADSCREEN_LOG_LEVEL:-INFO}
+      - UVICORN_WORKERS=${UVICORN_WORKERS:-1}
+      # 数据库写入持久卷：必须与 adscreen-db 挂载点一致，否则容器重建丢库
+      - ADSCREEN_DB_PATH=/app/backend/data/ad_screen.db
+      # 生产不填充演示账号/病例（避免 admin/admin123 公开弱口令入库）
+      - ADSCREEN_SEED_DEMO_DATA=${ADSCREEN_SEED_DEMO_DATA:-0}
+    volumes:
+      # 模型权重（不打入镜像，挂载宿主目录）
+      - ./checkpoints:/app/models/../checkpoints:ro
+      # SQLite 数据库持久化（容器重建不丢数据）
+      - adscreen-db:/app/backend/data
+      # 日志持久化
+      - adscreen-logs:/app/backend/logs
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    # GPU 支持（需 nvidia-container-toolkit）
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  # Prometheus 指标采集（可选，生产观察启用）
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: adscreen-prometheus
+    restart: unless-stopped
+    profiles: ["observe"]  # 仅 docker compose --profile observe up 启动
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      - adscreen
+
+volumes:
+  adscreen-db:
+  adscreen-logs:
+  prometheus-data:

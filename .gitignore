@@ -1,0 +1,125 @@
+##ignore this file##
+/target/
+/.idea/
+/.settings/
+/.vscode/
+/bin/
+
+ADNI.csv
+dataset.py
+.classpath
+.project
+.settings
+.idea
+ ##filter databfile、sln file##
+*.mdb
+*.ldb
+*.sln
+##class file##
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+# compression file
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+*.via
+*.tmp
+*.err
+*.log
+*.iml
+# OS generated files #
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+ehthumbs.db
+Thumbs.db
+.factorypath
+/.mvn/
+/mvnw.cmd
+/mvnw
+/checkpoints
+*.pt
+
+# ==================== Python 虚拟环境与缓存 ====================
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# ==================== Node.js ====================
+node_modules/
+dist/
+
+# ==================== ADScreen 运行时产物 ====================
+# SQLite 数据库与临时文件（含 WAL 模式的 -wal / -shm 伴生文件）
+ad_screen.db
+ad_screen.db-journal
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+# 数据库备份（自动生成，不入库）
+ad-screen-backend/backups/
+# 后端日志与上传目录
+ad-screen-backend/logs/
+ad-screen-backend/uploads/
+# 启动脚本输出
+_startup.log
+_startup.err
+
+# ==================== 环境变量（含密钥，严禁入库） ====================
+.env
+.env.local
+.env.*.local
+!.env.example
+ad-screen-backend/.env
+
+# ==================== 覆盖率与测试产物 ====================
+.coverage
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+
+# ==================== 根目录散落报告 CSV ====================
+# 报告已统一归档至 docs/reports/，根目录散落的 CSV 不入库
+# 用 /*.csv 仅匹配根目录，避免误伤 docs/reports/ 下已归档报告
+/*.csv
+
+# ==================== 数据集图像（体积大，不入库） ====================
+# datasets 下仅保留 __init__.py / rename_dataset.py / ADNI.csv 等小型文件
+# 忽略所有图像子目录（如 "MRI PET图像/"）与二进制图像文件
+datasets/*/
+*.nii
+*.nii.gz
+# ==================== 训练产物与模型权重 ====================
+# 权重文件（*.pt 已在上方全局忽略），此处连目录一并排除，避免混入快照/临时文件
+best_model_baseline/
+best_model_v4/
+best_model_v6/
+training_curves/
+
+# ==================== WorkBuddy 运行期临时目录 ====================
+# 注意：.workbuddy/memory/ 是项目记忆，需要入库，只忽略 tmp
+.workbuddy/tmp/
+
+# ==================== 编辑器/AI 工具的会话状态 ====================
+# .mimosa：hook 运行时快照（含源码副本，每次会话数百个文件，属于机器状态）
+# .v2c：插件根路径指针（含本机绝对路径，跨机器无意义）
+# 注意：.trae/skills 是可复用工作流文档，需要入库，故不整目录排除
+.mimosa/
+.v2c/

@@ -1,0 +1,33 @@
+%% 快照集成推理链路（ad-screen-backend/services/model_inference.py）
+flowchart TB
+    classDef stage fill:#EAE3F5,stroke:#5B3E8E,stroke-width:1.5px,color:#0F172A
+    classDef detail fill:#F5F8FC,stroke:#94A3B8,stroke-width:1px,color:#1E293B
+    classDef side fill:#F1F5F9,stroke:#94A3B8,stroke-width:1px,color:#1E293B
+
+    S1["① 病例影像输入<br/>MRI NIfTI + PET NIfTI<br/>影像指纹 path+mtime+size"]:::stage
+    S2["② MONAI 预处理<br/>LoadImaged / EnsureChannelFirstd<br/>ScaleIntensityd → NormalizeIntensityd<br/>tensor (1,1,X,Y,Z)"]:::stage
+    S3["③ 快照集成前向<br/>N × model_ad(mri, pet)<br/>CUDA fp16 autocast"]:::stage
+    S4["④ 概率聚合与校准<br/>logits / T → Softmax → p(AD)<br/>概率平均 + 温度自校准"]:::stage
+    S5["⑤ 决策与置信度<br/>归一化熵 / 决策置信度<br/>阈值 0.5 或 Youden J"]:::stage
+    S6["⑥ 结果输出与落库<br/>SSE 流式进度 + 日志 + 指标"]:::stage
+
+    S1 --> S2 --> S3 --> S4 --> S5 --> S6
+
+    CKPT["checkpoints/<br/>5 实验目录 × 5 折 × 3 快照<br/>候选路径 75 条，加载全部实际存在的快照"]:::detail
+    CKPT --> S3
+
+    CACHE["LRU 推理缓存（上限 16 条）<br/>键 = 影像指纹，命中即返回"]:::side
+    S1 <-. 命中 .-> CACHE
+    S6 -. 回写 .-> CACHE
+
+    CAL["温度校准<br/>T ∈ [1.0, 3.0] 步长 0.1，Brier 最小<br/>每 20 条样本触发半监督自校准"]:::side
+    CAL --> S4
+
+    CONF["置信度量化<br/>归一化熵 H(p)/log2<br/>决策置信度 = 1 − H<br/>brierApprox = 单模型概率方差"]:::side
+    CONF --> S5
+
+    OBS["可观测性<br/>Prometheus /api/metrics<br/>推理日志 → 运行审计看板"]:::side
+    S6 --> OBS
+
+    FALLBACK["降级路径<br/>无 checkpoint → 模拟推理<br/>推理异常 → 返回 None 由调用方回退"]:::side
+    FALLBACK --> S3
