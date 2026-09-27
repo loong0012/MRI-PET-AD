@@ -46,7 +46,27 @@ jobs:
         env:
           ADSCREEN_ENV: development
           ADSCREEN_SECRET_KEY: ci-only-not-a-real-secret-key-please-ignore
-        run: python -m pytest tests/ -q --tb=short
+        run: |
+          set +e
+          python -m pytest tests/ -q --tb=short 2>&1 | tee pytest-output.txt
+          code=${PIPESTATUS[0]}
+          # 失败时把 FAILED/ERROR 行以 workflow 命令上报为注解，
+          # 这样不用点开日志就能在 PR 的 Checks 里直接看到是哪个用例挂了
+          if [ "$code" != "0" ]; then
+            grep -E "^(FAILED|ERROR)" pytest-output.txt | head -20 | while IFS= read -r line; do
+              echo "::error::$line"
+            done
+            echo "::error::pytest 退出码 $code，完整输出见本步骤日志"
+          fi
+          exit $code
+
+      - name: 上传测试输出（失败时也保留）
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-output-py${{ matrix.python-version }}
+          path: ad-screen-backend/pytest-output.txt
+          if-no-files-found: ignore
 
   frontend:
     name: 前端 · 测试 + 类型检查 + 构建
