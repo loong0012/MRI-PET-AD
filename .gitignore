@@ -5,8 +5,13 @@
 /.vscode/
 /bin/
 
-ADNI.csv
-dataset.py
+# 上游遗留规则，原为裸文件名（匹配任意层级），误伤过
+# ad-screen-backend/routers/dataset.py —— 导致该文件从未入库，
+# CI 全新检出后 `from routers import dataset` 直接 ImportError，
+# 而本地因文件仍在磁盘上"一切正常"（典型 works-on-my-machine）。
+# 改为锚定到具体路径，其余源码目录不再受影响。
+/dataset.py
+datasets/*/ADNI.csv
 .classpath
 .project
 .settings

@@ -373,3 +373,54 @@ class TestRequirementsCompleteness:
         """深度学习依赖单独文件，不混入核心依赖"""
         base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         assert os.path.isfile(os.path.join(base, "requirements-ml.txt"))
+
+
+# ------------------------------------------------------------------ 8. 源码不得被 gitignore 误伤
+class TestSourceNotGitignored:
+    """
+    源码文件不得被 .gitignore 挡在库外。
+
+    真实事故：.gitignore 里上游遗留的裸规则 `dataset.py` 会匹配**任意层级**，
+    把 ad-screen-backend/routers/dataset.py 排除在版本控制之外。
+    本地磁盘上文件还在，测试全绿；CI 全新检出后没有该文件，
+    `from routers import dataset` 直接 ImportError，10 个用例同时挂掉，
+    而报错信息完全指不到根因 —— 典型 works-on-my-machine。
+
+    说明：本测试在 CI 上必然通过（被忽略的文件根本不会被检出，列表为空），
+    它的价值在**本地**：提交前拦住这类"本地有、仓库没有"的幽灵文件。
+    """
+
+    @staticmethod
+    def _gitignored_files() -> list[str]:
+        import subprocess
+
+        base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        try:
+            out = subprocess.run(
+                ["git", "ls-files", "--others", "--ignored", "--exclude-standard"],
+                cwd=base, capture_output=True, text=True, timeout=30,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return []  # 无 git 或执行失败：跳过，不因环境误判
+        if out.returncode != 0:
+            return []
+        return [ln.strip() for ln in out.stdout.splitlines() if ln.strip()]
+
+    def test_no_source_file_is_gitignored(self):
+        """被忽略的文件中不得出现源码（.py / .ts / .vue）"""
+        ignored = self._gitignored_files()
+        if not ignored:
+            return  # 非 git 环境或确实没有忽略文件
+
+        # 排除明确属于缓存/产物/依赖的目录
+        noise_parts = ("node_modules", "__pycache__", ".pytest_cache", ".ruff_cache",
+                       ".venv", "venv", ".mimosa", ".workbuddy")
+        src_ext = (".py", ".ts", ".vue")
+        offenders = [
+            p for p in ignored
+            if p.endswith(src_ext) and not any(n in p for n in noise_parts)
+        ]
+        assert not offenders, (
+            "以下源码文件被 .gitignore 排除，会导致 CI 全新检出后 ImportError "
+            f"（本地因文件仍在磁盘而表现正常）：{offenders}"
+        )
